@@ -20,7 +20,12 @@ name: Reusable Security Scan
 #   jobs:
 #     security-scan:
 #       uses: Project-Arrakis/.github/.github/workflows/reusable-security-scan.yml@main
-#       secrets: inherit
+#       secrets:
+#         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+#
+# Don't use `secrets: inherit` here -- it passes every secret in the
+# calling repo to this workflow, not just the one it needs (semgrep
+# itself flags this as a least-privilege violation, confirmed live).
 #
 # Pin to a commit SHA instead of @main for a repo that wants to control
 # exactly when it picks up changes to this shared workflow.

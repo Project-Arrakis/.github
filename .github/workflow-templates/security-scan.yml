@@ -8,8 +8,11 @@ name: Security Scan
 #
 # Delete any `run-*: false` line below to enable that scanner (all
 # three run by default). If this repo has its own SEMGREP_APP_TOKEN
-# secret, `secrets: inherit` picks it up automatically -- semgrep still
-# runs without it, just without results published to semgrep.dev.
+# secret, it's passed through explicitly below -- semgrep still runs
+# without it, just without results published to semgrep.dev. Don't
+# switch this to `secrets: inherit`: it passes every secret in this
+# repo to the called workflow, not just the one it needs (semgrep
+# itself flags this as a least-privilege violation).
 
 on:
   pull_request:
@@ -20,4 +23,5 @@ on:
 jobs:
   security-scan:
     uses: Project-Arrakis/.github/.github/workflows/reusable-security-scan.yml@main
-    secrets: inherit
+    secrets:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
