@@ -19,14 +19,14 @@ integration.
 ### Dune: Awakening Docker
 Core self-hosting platform and containerized server infrastructure.
 
-### Dune Ops Observability
+### Dune: Awakening Docker Ops Observability
 Operational telemetry, Prometheus integration, SOC/NOC visibility,
 health models, and reliability monitoring.
 
-### Dune Docker Addons
+### Dune: Awakening Docker Addons
 Governed extension and addon ecosystem.
 
-### ACP Operations
+### Dune: Awakening Docker - Sentinel
 Automation, Discord integration, upstream monitoring, CI validation,
 and operational tooling.
 
