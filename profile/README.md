@@ -27,12 +27,9 @@ profile/assets/project-arrakis-banner.png
 
 <br>
 
-[**🐳 Run a Server**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker)
-  •  
-[**🧭 Explore Projects**](https://github.com/orgs/Project-Arrakis/repositories)
-  •  
-[**💬 Discussions**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/discussions)
-  •  
+[**🐳 Run a Server**](https://github.com/Red-Blink/dune-awakening-selfhost-docker) ·
+[**🧭 Explore Projects**](https://github.com/orgs/Project-Arrakis/repositories) ·
+[**💬 Discussions**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/discussions) ·
 [**🐛 Issues**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/issues)
 
 </div>
@@ -72,7 +69,7 @@ Project Arrakis is organized around complementary projects covering the operatio
 
 Dune: Awakening Docker provides guided deployment, browser-based administration, service lifecycle management, backups, updates, player operations, map management, diagnostics, and supporting database tooling.
 
-Project Arrakis builds on the upstream **Dune: Awakening Self-Hosted Docker** project led and maintained by **RedBlink**. The Project Arrakis fork supports integration, testing, contribution development, and the broader Project Arrakis ecosystem.
+Project Arrakis builds on the upstream **Dune: Awakening Self-Hosted Docker** project led and maintained by **[RedBlink](https://github.com/Red-Blink)**. The Project Arrakis fork supports integration, testing, contribution development, and the broader Project Arrakis ecosystem.
 
 **Focus:** `Docker` · `Linux` · `Server Management` · `Networking` · `Automation`
 
@@ -232,9 +229,11 @@ Project Arrakis welcomes useful engineering contributions, testing, documentatio
 
 ### 🐳 Run Dune: Awakening Docker
 
-Start with the core self-hosting platform:
+For installation, releases, user documentation, and production use, start with the **upstream Dune: Awakening Docker project maintained by [RedBlink](https://github.com/Red-Blink)**:
 
-[**Project-Arrakis/dune-awakening-selfhost-docker →**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker)
+[**Red-Blink/dune-awakening-selfhost-docker →**](https://github.com/Red-Blink/dune-awakening-selfhost-docker)
+
+Project Arrakis maintains its organization fork for integration work, testing, contribution development, and ecosystem compatibility rather than as the primary installation source.
 
 ### 🧭 Explore the Ecosystem
 
@@ -264,15 +263,37 @@ Use GitHub Discussions for questions, ideas, operational discussions, and commun
 
 ## 🌐 Upstream & Community
 
-Project Arrakis exists within a larger Dune: Awakening self-hosting community.
+Project Arrakis exists within the broader **Dune: Awakening Docker** open-source and community ecosystem.
 
-We believe upstream collaboration, appropriate attribution, compatibility awareness, and clear project boundaries are essential to a healthy open-source ecosystem.
+We believe upstream collaboration, appropriate attribution, compatibility awareness, and clear project boundaries are essential to a healthy open-source project.
 
-The core Dune: Awakening Docker project is led and maintained upstream by **RedBlink**:
+### 🐳 Upstream Project
+
+The core Dune: Awakening Docker platform is led and maintained by **[RedBlink](https://github.com/Red-Blink)**.
 
 [**Red-Blink/dune-awakening-selfhost-docker →**](https://github.com/Red-Blink/dune-awakening-selfhost-docker)
 
-Project Arrakis develops integrations, operational tooling, observability, automation, deployment guidance, testing, and contributions around that platform while preserving clear attribution to upstream work.
+Use the upstream repository for:
+
+- Installation and production deployment
+- Current releases
+- Core platform documentation
+- Upstream issues and contributions
+- Supported self-hosting functionality
+
+### 💬 Upstream Discord Community
+
+Join the Dune: Awakening Docker community for support, project discussion, server operations, addons, and community collaboration:
+
+[**Join the Dune: Awakening Docker Discord →**](https://discord.gg/GzTDetWUZ)
+
+### 🏜️ Project Arrakis
+
+Project Arrakis develops complementary integrations, operational tooling, observability, automation, deployment guidance, testing, and community services around the upstream platform while preserving clear attribution and separation from upstream ownership.
+
+Our organization fork of Dune: Awakening Docker is primarily used for integration, validation, contribution development, and ecosystem compatibility work:
+
+[**Project-Arrakis/dune-awakening-selfhost-docker →**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker)
 
 ---
 
@@ -284,9 +305,9 @@ Project Arrakis develops integrations, operational tooling, observability, autom
 
 <br>
 
-[![GitHub](https://img.shields.io/badge/GitHub-Project%20Arrakis-181717?style=for-the-badge\&logo=github\&logoColor=white)](https://github.com/Project-Arrakis)
-[![Repositories](https://img.shields.io/badge/Explore-Repositories-C97A40?style=for-the-badge\&logo=github\&logoColor=white)](https://github.com/orgs/Project-Arrakis/repositories)
-[![Discussions](https://img.shields.io/badge/Community-Discussions-6E5494?style=for-the-badge\&logo=github\&logoColor=white)](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/discussions)
+[![Run Dune Docker](https://img.shields.io/badge/Run-Dune%20Awakening%20Docker-C97A40?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/Red-Blink/dune-awakening-selfhost-docker)
+[![Project Arrakis](https://img.shields.io/badge/GitHub-Project%20Arrakis-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Project-Arrakis)
+[![Discord](https://img.shields.io/badge/Community-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/GzTDetWUZ)
 
 </div>
 
