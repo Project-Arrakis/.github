@@ -1,0 +1,102 @@
+name: Reusable Security Scan
+
+# Shared secret/SAST/filesystem-vuln scan for every repo in this org.
+#
+# Why this exists: two real bugs were found in the same week from each
+# repo independently reinventing this logic -- dune-awakening-selfhost-docker's
+# own copy silently skipped gitleaks/trivy entirely because neither binary
+# was installed on the runner (the job still reported success), and
+# several repos' gitleaks-action-based copies broke org-wide when that
+# Action started requiring a paid license for organization accounts.
+# Centralizing here means a fix lands once and every caller gets it,
+# instead of drifting per repo.
+#
+# Deliberately uses the raw gitleaks CLI (checksum-verified download),
+# not gitleaks/gitleaks-action -- that sidesteps the org-license
+# requirement entirely, for every repo that adopts this.
+#
+# Usage from a calling repo's own workflow:
+#
+#   jobs:
+#     security-scan:
+#       uses: Project-Arrakis/.github/.github/workflows/reusable-security-scan.yml@main
+#       secrets: inherit
+#
+# Pin to a commit SHA instead of @main for a repo that wants to control
+# exactly when it picks up changes to this shared workflow.
+
+on:
+  workflow_call:
+    inputs:
+      run-semgrep:
+        description: "Run the Semgrep SAST scan (p/default + p/secrets). Set false to skip for repos with no application code."
+        type: boolean
+        default: true
+      run-trivy:
+        description: "Run the Trivy filesystem scan (vuln,secret,misconfig)."
+        type: boolean
+        default: true
+      gitleaks-config-path:
+        description: "Path to a repo-specific .gitleaks.toml, relative to repo root. Leave empty to use gitleaks' built-in default rules only."
+        type: string
+        default: ".gitleaks.toml"
+    secrets:
+      SEMGREP_APP_TOKEN:
+        description: "Semgrep AppSec Platform token. Optional -- semgrep still runs locally (p/default + p/secrets) without it, just without results published to semgrep.dev."
+        required: false
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks
+        run: |
+          set -euo pipefail
+          CONFIG_ARGS=()
+          if [ -f "${{ inputs.gitleaks-config-path }}" ]; then
+            CONFIG_ARGS=(--config "${{ inputs.gitleaks-config-path }}")
+            echo "Using repo config: ${{ inputs.gitleaks-config-path }}"
+          else
+            echo "No repo-specific gitleaks config found at '${{ inputs.gitleaks-config-path }}' -- using gitleaks' built-in default rules only."
+          fi
+          gitleaks detect --redact --no-banner "${CONFIG_ARGS[@]}"
+
+  semgrep:
+    name: semgrep
+    if: ${{ inputs.run-semgrep }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Install semgrep
+        run: python3 -m pip install semgrep==1.170.0
+      - name: Run semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        run: semgrep scan --config p/default --config p/secrets --error --severity ERROR --severity WARNING
+
+  trivy:
+    name: trivy
+    if: ${{ inputs.run-trivy }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Install trivy
+        run: |
+          curl -sL https://github.com/aquasecurity/trivy/releases/download/v0.73.0/trivy_0.73.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
+          echo "2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b  /tmp/trivy.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
+          sudo install -m 0755 /tmp/trivy /usr/local/bin/trivy
+          trivy --version
+      - name: Run trivy
+        run: trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --exit-code 1 .

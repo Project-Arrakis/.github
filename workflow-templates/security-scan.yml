@@ -1,0 +1,23 @@
+name: Security Scan
+
+# Starter workflow that calls this org's shared reusable security scan
+# (gitleaks + semgrep + trivy). See
+# https://github.com/Project-Arrakis/.github/blob/main/.github/workflows/reusable-security-scan.yml
+# for what each job does and why it's centralized here instead of
+# copied per repo.
+#
+# Delete any `run-*: false` line below to enable that scanner (all
+# three run by default). If this repo has its own SEMGREP_APP_TOKEN
+# secret, `secrets: inherit` picks it up automatically -- semgrep still
+# runs without it, just without results published to semgrep.dev.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    uses: Project-Arrakis/.github/.github/workflows/reusable-security-scan.yml@main
+    secrets: inherit
