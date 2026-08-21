@@ -57,9 +57,9 @@ Project Arrakis is organized around complementary projects covering the operatio
 
 | Project                                         | Role                                                                       |
 | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| 🐳 **Dune: Awakening Docker**                   | Core self-hosting platform and containerized server infrastructure         |
+| 🐳 **[Dune: Awakening Docker](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker)**                   | Core self-hosting platform and containerized server infrastructure         |
 | 📊 **Dune: Awakening Docker Ops Observability** | Read-only health, readiness, operational telemetry, and NOC/SOC visibility |
-| 📦 **Dune: Awakening Docker Addons**            | Governed community extension and addon ecosystem                           |
+| 📦 **[Dune: Awakening Docker Addons](https://github.com/Red-Blink/dune-docker-addons)**            | Governed community extension and addon ecosystem                           |
 | 🛡️ **Dune: Awakening Docker — Sentinel**       | Discord-facing operations, monitoring, notifications, and automation       |
 | 🗺️ **Deployment Engineering**                  | Infrastructure architecture, validation, scaling, and production hardening |
 
