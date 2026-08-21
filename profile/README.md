@@ -1,4 +1,3 @@
-````markdown
 <div align="center">
 
 <!--
@@ -88,10 +87,6 @@ Project Arrakis is composed of complementary projects covering the full lifecycl
                   Supply Chain                 Networking
                   Lifecycle                    Scaling
                                                Hardening
-````
-
----
-
 ## 🐳 Dune: Awakening Docker
 
 > **Core self-hosting platform and containerized server infrastructure.**
@@ -967,8 +962,8 @@ How do we turn a server into a community?
 
 <br>
 
-[![GitHub](https://img.shields.io/badge/GitHub-Project%20Arrakis-181717?style=for-the-badge\&logo=github)](https://github.com/yacketrj)
-[![Discussions](https://img.shields.io/badge/Community-Discussions-6E5494?style=for-the-badge\&logo=github)](https://github.com/yacketrj)
+[![GitHub](https://img.shields.io/badge/GitHub-Project%20Arrakis-181717?style=for-the-badge&logo=github)](https://github.com/Project-Arrakis)
+[![Discussions](https://img.shields.io/badge/Community-Discussions-6E5494?style=for-the-badge&logo=github)](https://github.com/Project-Arrakis)
 
 </div>
 
@@ -983,6 +978,3 @@ It is **not affiliated with, endorsed by, sponsored by, or associated with Funco
 **Dune**, **Dune: Awakening**, and related names, trademarks, characters, imagery, and intellectual property belong to their respective owners.
 
 Project Arrakis provides community-developed infrastructure, tooling, automation, observability, operational resources, and community gameplay services intended for use with legally obtained software and supported self-hosting functionality.
-
-```
-```
