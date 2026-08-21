@@ -87,6 +87,7 @@ Project Arrakis is composed of complementary projects covering the full lifecycl
                   Supply Chain                 Networking
                   Lifecycle                    Scaling
                                                Hardening
+```
 ## 🐳 Dune: Awakening Docker
 
 > **Core self-hosting platform and containerized server infrastructure.**
