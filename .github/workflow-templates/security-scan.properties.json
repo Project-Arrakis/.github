@@ -1,0 +1,7 @@
+{
+  "name": "Security Scan (org shared)",
+  "description": "Calls Project-Arrakis's shared reusable gitleaks + semgrep + trivy scan instead of reimplementing it per repo.",
+  "iconName": "octicon shield-check",
+  "categories": ["Security"],
+  "filePatterns": []
+}
