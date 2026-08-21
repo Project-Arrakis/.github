@@ -32,8 +32,10 @@ profile/assets/project-arrakis-banner.png
 [**💬 Discussions**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/discussions) ·
 [**🐛 Issues**](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker/issues)
 
-</div>
+<br>
 
+[![Support my open-source work on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/darkdante)
+</div>
 ---
 
 ## 🏜️ What is Project Arrakis?
