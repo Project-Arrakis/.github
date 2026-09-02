@@ -60,7 +60,7 @@ Project Arrakis is organized around complementary projects covering the operatio
 | 🐳 **[Dune: Awakening Docker](https://github.com/Project-Arrakis/dune-awakening-selfhost-docker)**                   | Core self-hosting platform and containerized server infrastructure         |
 | 📊 **Dune: Awakening Docker Ops Observability** | Read-only health, readiness, operational telemetry, and NOC/SOC visibility |
 | 📦 **[Dune: Awakening Docker Addons](https://github.com/Red-Blink/dune-docker-addons)**            | Governed community extension and addon ecosystem                           |
-| 🛡️ **Dune: Awakening Docker — Sentinel**       | Discord-facing operations, monitoring, notifications, and automation       |
+| 🛡️ **Dune: Awakening Docker — Mentat**       | Discord-facing operations, monitoring, notifications, and automation       |
 | 🗺️ **Deployment Engineering**                  | Infrastructure architecture, validation, scaling, and production hardening |
 
 ### 🐳 Dune: Awakening Docker
@@ -86,7 +86,7 @@ The project distinguishes between data that is **available, conditionally availa
 
 **Focus:** `Prometheus` · `Grafana` · `SRE` · `NOC` · `SOC` · `Telemetry`
 
-[**Explore Ops Observability →**](https://github.com/yacketrj/dune-ops-observability-addon)
+[**Explore Ops Observability →**](https://github.com/Project-Arrakis/dune-ops-observability-addon)
 
 ### 📦 Dune: Awakening Docker Addons
 
@@ -98,21 +98,21 @@ The addon catalog provides a structured mechanism for discovering and managing c
 
 **Focus:** `Extensions` · `Governance` · `Compatibility` · `Supply Chain`
 
-[**Browse Docker Addons →**](https://github.com/yacketrj/dune-docker-addons)
+[**Browse Docker Addons →**](https://github.com/Project-Arrakis/dune-docker-addons)
 
-### 🛡️ Dune: Awakening Docker — Sentinel
+### 🛡️ Dune: Awakening Docker — Mentat
 
 **Operational awareness and automation for the Project Arrakis ecosystem.**
 
-Sentinel is the evolving operations companion for Dune: Awakening Docker. Its public-facing capabilities center on Discord-based server visibility and operator/community workflows, including server health and player-facing information under a read-only-by-default model.
+Mentat is the evolving operations companion for Dune: Awakening Docker. Its public-facing capabilities center on Discord-based server visibility and operator/community workflows, including server health and player-facing information under a read-only-by-default model.
 
-The broader Sentinel product direction includes monitoring, notifications, operational automation, upstream awareness, and controlled administrative workflows.
+The broader Mentat product direction includes monitoring, notifications, operational automation, upstream awareness, and controlled administrative workflows.
 
-**Sentinel Web** is the companion web interface for operational visibility, telemetry, diagnostics, and administration.
+**Mentat Mnemonic** is the companion web interface for operational visibility, telemetry, diagnostics, and administration.
 
 **Focus:** `Discord` · `Operations` · `Monitoring` · `Automation` · `SRE`
 
-> **Brand migration:** Sentinel succeeds the **Arrakis Control Panel / ACP** identity. Public repositories, documentation, and visual assets are being standardized around the Sentinel product family.
+> **Brand migration:** Mentat (formerly Sentinel, and before that Arrakis Control Panel / ACP) is the current product identity; its companion web interface is Mentat Mnemonic (formerly "Sentinel Web"). Public repositories, documentation, and visual assets are being standardized around the Mentat product family — repository renames are still pending as of this writing.
 
 ### 🗺️ Deployment Engineering
 
@@ -133,7 +133,7 @@ Deployment Engineering focuses on the infrastructure beneath the application sta
 | 🏜️ **Game Infrastructure** | Dune: Awakening self-hosted services                                      |
 | 🐳 **Runtime**              | Docker, Docker Compose, Linux                                             |
 | 🎛️ **Administration**      | Browser administration and service lifecycle management                   |
-| 🛡️ **Sentinel**            | Discord integration, monitoring, notifications, and operational workflows |
+| 🛡️ **Mentat**            | Discord integration, monitoring, notifications, and operational workflows |
 | 📊 **Observability**        | Health, readiness, Prometheus, Grafana, and NOC/SOC visibility            |
 | 🌐 **Networking**           | Segmentation, firewalling, service exposure, and remote administration    |
 | 🔐 **Security**             | Least privilege, trust boundaries, and secure delivery controls           |
