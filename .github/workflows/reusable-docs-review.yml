@@ -1,0 +1,98 @@
+name: Reusable Documentation Review
+
+# Shared "tech writer" documentation review for every repo in this org.
+#
+# Why this exists: this org's own operating rules treat documentation
+# drift as a defect, not a backlog item (Project-Arrakis README, "if a
+# document says X, and X is wrong, fix it now") -- but that discipline is
+# only as good as whoever remembers to apply it. This gives it a
+# mechanical backstop: on every PR touching docs, Claude reviews the
+# actual diff for accuracy (claims that don't match the real code/config
+# it describes), staleness (dead links, hardcoded facts that could have
+# drifted, superseded instructions), and clarity -- then posts findings
+# as a single PR comment. It complements, not replaces, the mechanical
+# reusable-link-check.yml (that catches dead links; this catches
+# semantic/factual drift a link checker can't).
+#
+# REQUIRES one of these org or repo secrets to be set, or this workflow's
+# job is a no-op (skipped, not failed) -- see the check step below:
+#   ANTHROPIC_API_KEY        -- an Anthropic Console API key, billed per use
+#   CLAUDE_CODE_OAUTH_TOKEN  -- from `claude setup-token`, uses a Claude
+#                               Code Pro/Max plan's included usage instead
+#                               of separate API billing
+#
+# Usage from a calling repo's own workflow:
+#
+#   jobs:
+#     docs-review:
+#       uses: Project-Arrakis/.github/.github/workflows/reusable-docs-review.yml@main
+#       secrets:
+#         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+#         CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+#
+# Pin to a commit SHA instead of @main for a repo that wants to control
+# exactly when it picks up changes to this shared workflow.
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: "Glob(s) this review applies to, space-separated (passed to git diff, not a trigger filter -- the calling workflow's own `on.pull_request.paths` should do the triggering)."
+        type: string
+        default: "**/*.md **/*.html"
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-auth:
+    name: check-auth
+    runs-on: ubuntu-latest
+    outputs:
+      has-auth: ${{ steps.check.outputs.has-auth }}
+    steps:
+      - name: Check for an Anthropic credential
+        id: check
+        run: |
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ] || [ -n "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "has-auth=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-auth=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping documentation review -- no ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN secret configured for this repo/org. See reusable-docs-review.yml's header comment for setup steps."
+          fi
+
+  docs-review:
+    name: docs-review
+    needs: check-auth
+    if: needs.check-auth.outputs.has-auth == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Documentation review
+        uses: anthropics/claude-code-action@9c5ddab2e6d17b83ea679153b31f1d5f023cf636 # v1.0.217
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: "true"
+          prompt: |
+            You are reviewing this pull request's documentation changes as a technical writer/editor, not a code reviewer.
+
+            Scope: only files matching ${{ inputs.paths }} that this PR actually changes. Run `git diff origin/${{ github.event.pull_request.base.ref }}...HEAD -- ${{ inputs.paths }}` to see the real diff -- do not review the whole repo.
+
+            For each changed doc file, check:
+            1. **Accuracy**: does every factual claim (a command, an env var name, a URL, a file path, a behavior description) match what the actual code/config in this repo does? Spot-check claims against the real source, don't just read the prose in isolation.
+            2. **Staleness**: any reference to a renamed/removed thing, an outdated version number, a superseded instruction, or a claim that contradicts another doc in this same repo?
+            3. **Clarity**: is anything genuinely ambiguous or would mislead a first-time reader, not just "could be phrased more elegantly"?
+            4. **Completeness**: if this PR's non-doc changes (if any) altered behavior, config, or an interface, does the doc change actually cover what changed, or does something remain undocumented?
+
+            Do not flag stylistic preferences, and do not suggest changes outside the diff. If a claim is uncertain, say so explicitly rather than asserting it's wrong.
+
+            Post your findings as a single PR comment. If you find nothing worth flagging, post a short comment saying so explicitly -- don't post nothing (silence is indistinguishable from "review never ran").

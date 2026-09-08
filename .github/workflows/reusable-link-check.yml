@@ -1,0 +1,51 @@
+name: Reusable Link Check
+
+# Shared markdown/HTML link checker for every repo in this org.
+#
+# Why this exists: dune-awakening-selfhost-docker's docs carried 6 dead-link
+# occurrences (a 404ing pre-rename bot repo) undetected for a long time --
+# this repo had no link-checker of any kind in CI. mentat-link already had
+# its own (scripts/check-links.js, site-scoped); this gives every other repo
+# the same mechanical backstop instead of relying on someone noticing by
+# luck, per Project-Arrakis's own DevSecOps "evidence over hope" principle.
+#
+# Uses lychee (https://github.com/lycheeverse/lychee) -- a real, actively
+# maintained link checker, not a hand-rolled script -- via its official
+# GitHub Action, SHA-pinned like every other action reference in this org.
+#
+# Usage from a calling repo's own workflow:
+#
+#   jobs:
+#     link-check:
+#       uses: Project-Arrakis/.github/.github/workflows/reusable-link-check.yml@main
+#
+# Pin to a commit SHA instead of @main for a repo that wants to control
+# exactly when it picks up changes to this shared workflow.
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: "Glob(s) to check, space-separated. Defaults to markdown docs only -- widen for repos that also want HTML checked."
+        type: string
+        default: "docs/**/*.md README.md CHANGELOG.md"
+      fail-on-error:
+        description: "Fail the job on a broken link. Set false to report-only (e.g. while first adopting this on a repo with known-broken external links to triage)."
+        type: boolean
+        default: true
+
+jobs:
+  link-check:
+    name: link-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --no-progress
+            --exclude-mail
+            --accept 200,201,202,203,204,206,301,302,303,307,308
+            ${{ inputs.paths }}
+          fail: ${{ inputs.fail-on-error }}
