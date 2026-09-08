@@ -33,6 +33,16 @@ on:
         description: "Fail the job on a broken link. Set false to report-only (e.g. while first adopting this on a repo with known-broken external links to triage)."
         type: boolean
         default: true
+      fail-if-empty:
+        description: >-
+          Fail the job if zero checkable links are found in the given paths.
+          Set false for a repo whose docs genuinely contain no live
+          hyperlinks (e.g. only code-fenced example URLs, which lychee
+          correctly never checks) -- lychee-action's own default (true)
+          treats zero links as a likely misconfiguration, which is the
+          right default everywhere else but a false positive here.
+        type: boolean
+        default: true
       exclude:
         description: >-
           A single regex (use alternation for more than one pattern, e.g.
@@ -67,3 +77,4 @@ jobs:
             ${{ inputs.exclude != '' && format('--exclude ''{0}''', inputs.exclude) || '' }}
             ${{ inputs.paths }}
           fail: ${{ inputs.fail-on-error }}
+          failIfEmpty: ${{ inputs.fail-if-empty }}
