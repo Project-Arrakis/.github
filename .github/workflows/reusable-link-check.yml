@@ -57,9 +57,13 @@ jobs:
       - name: Run lychee
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
         with:
+          # lychee-action's entrypoint runs this whole string through `eval`,
+          # so an unquoted regex containing shell metacharacters (parens,
+          # pipes, `$`) breaks parsing -- the exclude value must be wrapped
+          # in its own quotes to survive eval as a single argument.
           args: >-
             --no-progress
             --accept 200,201,202,203,204,206,301,302,303,307,308
-            ${{ inputs.exclude != '' && format('--exclude {0}', inputs.exclude) || '' }}
+            ${{ inputs.exclude != '' && format('--exclude ''{0}''', inputs.exclude) || '' }}
             ${{ inputs.paths }}
           fail: ${{ inputs.fail-on-error }}
