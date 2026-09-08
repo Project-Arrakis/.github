@@ -33,6 +33,20 @@ on:
         description: "Fail the job on a broken link. Set false to report-only (e.g. while first adopting this on a repo with known-broken external links to triage)."
         type: boolean
         default: true
+      exclude:
+        description: >-
+          A single regex (use alternation for more than one pattern, e.g.
+          'foo|bar') passed through to lychee's --exclude. Use this for links
+          that are correct but can never be verified anonymously -- most
+          commonly a cross-repo link into one of this org's private repos
+          (mentat, mentat-link, meta): GitHub does not serve rename-redirects
+          or issue/content bodies to unauthenticated requests for a private
+          repo, so a correct link 404s here regardless. Excluding the pattern
+          means "not mechanically checked," not "verified" -- whoever adds a
+          new such link is still responsible for getting the slug/number
+          right by hand.
+        type: string
+        default: ""
 
 jobs:
   link-check:
@@ -46,5 +60,6 @@ jobs:
           args: >-
             --no-progress
             --accept 200,201,202,203,204,206,301,302,303,307,308
+            ${{ inputs.exclude != '' && format('--exclude {0}', inputs.exclude) || '' }}
             ${{ inputs.paths }}
           fail: ${{ inputs.fail-on-error }}
