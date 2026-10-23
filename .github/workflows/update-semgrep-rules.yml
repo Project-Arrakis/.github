@@ -1,0 +1,99 @@
+name: Update semgrep rule snapshot
+
+# Maintainer-run job (workflow_dispatch). Downloads the semgrep registry rule sets p/default and
+# p/secrets IN CI, validates them, and proposes them as a dated snapshot in
+# security-scan/semgrep-rules/ by pull request. reusable-security-scan-v2.yml scans with this
+# snapshot (instead of the live registry) when a caller passes `tools-ref` pointing at a commit
+# that contains it. See security-scan/README.md.
+#
+# Nothing is merged by this job: review the diff of the pull request like any other change.
+# If the repository setting "Allow GitHub Actions to create and approve pull requests" is off,
+# the job still pushes the branch and prints the compare link in the job summary.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-semgrep-rules
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: snapshot
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install semgrep (to validate the downloaded rules)
+        run: |
+          set -euo pipefail
+          if [ -f security-scan/requirements-semgrep.txt ]; then
+            python -m pip install --require-hashes -r security-scan/requirements-semgrep.txt
+          else
+            python -m pip install "semgrep==1.170.0"
+          fi
+          semgrep --version
+      - name: Download and validate the rule sets
+        run: |
+          set -euo pipefail
+          out=security-scan/semgrep-rules
+          mkdir -p "$out"
+          for set in default secrets; do
+            tmp="${RUNNER_TEMP}/p-${set}.yml"
+            curl -sS -L --fail --proto '=https' --tlsv1.2 --max-time 120 --retry 3 \
+              -o "$tmp" "https://semgrep.dev/c/p/${set}"
+            n="$(grep -c -E '^[[:space:]]*-[[:space:]]+id:' "$tmp" || true)"
+            echo "p/${set}: ${n} rules"
+            if [ "$n" -lt 10 ]; then
+              echo "::error::p/${set} looks wrong (${n} rules found); not committing it."
+              exit 1
+            fi
+            semgrep --validate --metrics off --config "$tmp"
+            cp "$tmp" "$out/p-${set}.yml"
+          done
+          {
+            echo "Semgrep registry rule snapshot"
+            echo "date: $(date -u +%Y-%m-%d)"
+            echo "sets: p/default p/secrets"
+            echo "semgrep: $(semgrep --version)"
+            echo "sha256:"
+            (cd "$out" && sha256sum p-default.yml p-secrets.yml | sed 's/^/  /')
+          } > "$out/SNAPSHOT.txt"
+          cat "$out/SNAPSHOT.txt"
+      - name: Propose the snapshot by pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain -- security-scan/semgrep-rules/p-default.yml security-scan/semgrep-rules/p-secrets.yml)" ]; then
+            git checkout -- security-scan/semgrep-rules/SNAPSHOT.txt 2>/dev/null || true
+            echo "The registry rule sets are unchanged since the last snapshot."
+            echo "The registry rule sets are unchanged since the last snapshot; nothing to propose." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          day="$(date -u +%Y-%m-%d)"
+          branch="automation/semgrep-rules-${day}-${RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add security-scan/semgrep-rules
+          git commit -m "chore: semgrep rule snapshot ${day}"
+          git push origin "$branch"
+          body="Dated snapshot of the semgrep registry sets p/default and p/secrets, downloaded in CI by the Update semgrep rule snapshot workflow (run ${RUN_ID}). Review the diff of security-scan/semgrep-rules/ before merging. After merging, callers of reusable-security-scan-v2.yml pick it up by passing tools-ref set to the merge commit SHA (see security-scan/README.md)."
+          if gh pr create --repo "$REPO" --base main --head "$branch" --title "chore: semgrep rule snapshot ${day}" --body "$body"; then
+            echo "Opened a pull request for ${branch}." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Pushed ${branch} but could not open the pull request (the repository setting for Actions-created pull requests is probably off). Open it from: https://github.com/${REPO}/compare/main...${branch}?expand=1" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

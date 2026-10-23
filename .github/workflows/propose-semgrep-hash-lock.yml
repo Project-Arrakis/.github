@@ -1,0 +1,100 @@
+name: Propose semgrep hash lock
+
+# Maintainer-run job (workflow_dispatch). Resolves semgrep and all of its dependencies in CI,
+# writes security-scan/requirements-semgrep.txt with a sha256 hash for every distribution, proves
+# that `pip install --require-hashes` works from it, and proposes it by pull request.
+# reusable-security-scan-v2.yml installs semgrep from that file (instead of the unhashed pinned
+# install) when a caller passes `tools-ref` pointing at a commit that contains it.
+# See security-scan/README.md.
+#
+# The resolver (pip-tools) is installed here without hashes: this job only PROPOSES a file, and
+# the proposal is reviewed in a pull request. The scan jobs never use pip-tools.
+#
+# If the repository setting "Allow GitHub Actions to create and approve pull requests" is off,
+# the job still pushes the branch and prints the compare link in the job summary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      semgrep-version:
+        description: "semgrep version to lock, for example 1.170.0. Empty: the version in security-scan/requirements-semgrep.in."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: propose-semgrep-hash-lock
+  cancel-in-progress: false
+
+jobs:
+  lock:
+    name: lock
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Resolve and hash-lock
+        env:
+          SEMGREP_VERSION_INPUT: ${{ inputs.semgrep-version }}
+        run: |
+          set -euo pipefail
+          dir=security-scan
+          if [ -n "$SEMGREP_VERSION_INPUT" ]; then
+            if ! [[ "$SEMGREP_VERSION_INPUT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::semgrep-version must look like 1.170.0."
+              exit 1
+            fi
+            printf 'semgrep==%s\n' "$SEMGREP_VERSION_INPUT" > "$dir/requirements-semgrep.in"
+          fi
+          cat "$dir/requirements-semgrep.in"
+          python -m pip install "pip-tools==7.4.1"
+          pip-compile --generate-hashes --allow-unsafe --strip-extras --no-header \
+            --output-file "${RUNNER_TEMP}/requirements-semgrep.txt" "$dir/requirements-semgrep.in"
+          {
+            echo "# Hash-locked semgrep install for reusable-security-scan-v2.yml."
+            echo "# Generated in CI by .github/workflows/propose-semgrep-hash-lock.yml from"
+            echo "# security-scan/requirements-semgrep.in. Do not edit by hand."
+            echo "# Install: pip install --require-hashes -r requirements-semgrep.txt"
+            cat "${RUNNER_TEMP}/requirements-semgrep.txt"
+          } > "$dir/requirements-semgrep.txt"
+          wc -l "$dir/requirements-semgrep.txt"
+      - name: Prove the lock installs and runs
+        run: |
+          set -euo pipefail
+          python -m venv "${RUNNER_TEMP}/proof-venv"
+          "${RUNNER_TEMP}/proof-venv/bin/python" -m pip install --require-hashes -r security-scan/requirements-semgrep.txt
+          "${RUNNER_TEMP}/proof-venv/bin/semgrep" --version
+      - name: Propose the lock file by pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain security-scan)" ]; then
+            echo "The hash lock is unchanged; nothing to propose." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          day="$(date -u +%Y-%m-%d)"
+          branch="automation/semgrep-hash-lock-${day}-${RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add security-scan
+          git commit -m "chore: hash-locked semgrep requirements ${day}"
+          git push origin "$branch"
+          body="Hash-locked requirements for the semgrep install used by reusable-security-scan-v2.yml, generated in CI by the Propose semgrep hash lock workflow (run ${RUN_ID}); the job already proved that pip install --require-hashes works from it. Review security-scan/requirements-semgrep.txt before merging. After merging, callers pick it up by passing tools-ref set to the merge commit SHA (see security-scan/README.md)."
+          if gh pr create --repo "$REPO" --base main --head "$branch" --title "chore: hash-locked semgrep requirements ${day}" --body "$body"; then
+            echo "Opened a pull request for ${branch}." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Pushed ${branch} but could not open the pull request (the repository setting for Actions-created pull requests is probably off). Open it from: https://github.com/${REPO}/compare/main...${branch}?expand=1" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
