@@ -56,7 +56,10 @@ jobs:
             printf 'semgrep==%s\n' "$SEMGREP_VERSION_INPUT" > "$dir/requirements-semgrep.in"
           fi
           cat "$dir/requirements-semgrep.in"
-          python -m pip install "pip-tools==7.4.1"
+          # pip-tools 7.4.1 crashes on current pip (AttributeError allow_all_prereleases). Per the
+          # pip-tools 7.6.1 release notes it is compatible with pip 26.2; 7.6.2 adds click 8.5 support
+          # and its tox suite tests pip 26.2. Pin both exactly so the resolver is reproducible.
+          python -m pip install "pip==26.2.1" "pip-tools==7.6.2"
           pip-compile --generate-hashes --allow-unsafe --strip-extras --no-header \
             --output-file "${RUNNER_TEMP}/requirements-semgrep.txt" "$dir/requirements-semgrep.in"
           {
