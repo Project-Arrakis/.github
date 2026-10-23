@@ -30,5 +30,7 @@ Every repo in this org runs (or is migrating to) a shared secret/SAST/
 filesystem-vulnerability scan — see
 [`workflows/reusable-security-scan.yml`](workflows/reusable-security-scan.yml)
 — plus native GitHub secret scanning and push protection where enabled.
+The hardened v2 of the shared scan, and how a repo migrates to it, is described in
+[`security-scan/README.md`](security-scan/README.md).
 Findings are tracked as GitHub issues labeled `security` on the
 relevant repo.

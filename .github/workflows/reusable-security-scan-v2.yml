@@ -1,0 +1,265 @@
+name: Reusable Security Scan v2
+
+# Hardened successor of reusable-security-scan.yml. The v1 file is deliberately left
+# untouched (several repos call it at @main); repos opt in to v2 one by one, pinned by commit SHA.
+# Same inputs, same secret, same job names (gitleaks / semgrep / trivy), so a calling job named
+# `security-scan` keeps the required status check names `security-scan / gitleaks`,
+# `security-scan / semgrep` and `security-scan / trivy`.
+#
+# What v2 changes (see security-scan/README.md for the details and the migration steps):
+#
+#   1. Workflow-level `permissions: contents: read`; no job asks for more.
+#   2. gitleaks: the configuration (`gitleaks-config-path`) and the `.gitleaksignore` file are
+#      read from the DEFAULT BRANCH of the calling repository, never from the code under test.
+#      A pull request can therefore not weaken or delete them. A file that is missing on the
+#      default branch means gitleaks' built-in rules (an explicit stub config is passed, because
+#      gitleaks would otherwise auto-load .gitleaks.toml from the checkout). The input is
+#      validated and only ever passed to the shell through an environment variable.
+#   3. semgrep: `--metrics off`; installed from a hash-locked requirements file and scanned
+#      with committed rule snapshots when the caller passes `tools-ref` and that commit of
+#      Project-Arrakis/.github has them (security-scan/requirements-semgrep.txt,
+#      security-scan/semgrep-rules/). Without a snapshot it falls back to the pinned
+#      `semgrep==SEMGREP_VERSION` install and the live registry sets p/default and p/secrets.
+#   4. Checkouts do not persist the token in .git/config.
+#   5. trivy and gitleaks installs are exactly as in v1 (checksum-verified downloads).
+#
+# Usage from a calling repo's own workflow (pin the SHA of the commit that added or last changed
+# this file; pass `tools-ref` as the same SHA once that commit contains the semgrep snapshot and
+# the hash-locked requirements file):
+#
+#   jobs:
+#     security-scan:
+#       uses: Project-Arrakis/.github/.github/workflows/reusable-security-scan-v2.yml@<40-hex-sha>
+#       with:
+#         tools-ref: <same 40-hex-sha>   # optional, see security-scan/README.md
+#       secrets:
+#         SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+#
+# Pass the one secret explicitly (as above); do not forward every secret of the calling repo to
+# this workflow.
+
+on:
+  workflow_call:
+    inputs:
+      run-gitleaks:
+        description: "Run the gitleaks secret scan."
+        type: boolean
+        default: true
+      run-semgrep:
+        description: "Run the Semgrep SAST scan (p/default + p/secrets). Set false to skip for repos with no application code."
+        type: boolean
+        default: true
+      run-trivy:
+        description: "Run the Trivy filesystem scan (vuln,secret,misconfig)."
+        type: boolean
+        default: true
+      gitleaks-config-path:
+        description: "Path of a repo-specific gitleaks config, relative to the repo root. It is read from the default branch of the calling repo, not from the checkout under test. Empty, or missing on the default branch: gitleaks' built-in rules. Must not be absolute and must not contain '..'."
+        type: string
+        default: ".gitleaks.toml"
+      tools-ref:
+        description: "Optional full 40-hex commit SHA of Project-Arrakis/.github from which to read security-scan/requirements-semgrep.txt and security-scan/semgrep-rules/ (the hash-locked semgrep install and the committed rule snapshots). Empty: no snapshot is used (pinned pip install, live registry rule sets)."
+        type: string
+        default: ""
+    secrets:
+      SEMGREP_APP_TOKEN:
+        description: "Semgrep AppSec Platform token. Optional -- semgrep still runs locally (p/default + p/secrets) without it."
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  # Used when no hash-locked requirements file is available (keep in step with v1).
+  SEMGREP_VERSION: "1.170.0"
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    if: ${{ inputs.run-gitleaks }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks
+        run: |
+          curl -sL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+          echo "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Run gitleaks (configuration from the default branch)
+        env:
+          GITLEAKS_CONFIG_PATH: ${{ inputs.gitleaks-config-path }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          fail() { echo "::error::$1" >&2; exit 1; }
+
+          # --- validate the default branch name (from the event payload) ---
+          [ -n "$DEFAULT_BRANCH" ] || fail "The default branch of the calling repository is unknown (github.event.repository.default_branch is empty); refusing to read the gitleaks configuration from the code under test."
+          if [ "${#DEFAULT_BRANCH}" -gt 200 ] || ! [[ "$DEFAULT_BRANCH" =~ ^[A-Za-z0-9._/+-]+$ ]] || [[ "$DEFAULT_BRANCH" == -* ]] || [[ "$DEFAULT_BRANCH" == *..* ]]; then
+            fail "Unsupported default branch name."
+          fi
+
+          # --- validate the config path input: relative, no '..', conservative character set ---
+          cfg_path="$GITLEAKS_CONFIG_PATH"
+          if [ -n "$cfg_path" ]; then
+            if [ "${#cfg_path}" -gt 200 ]; then fail "gitleaks-config-path is too long."; fi
+            if ! [[ "$cfg_path" =~ ^[A-Za-z0-9._/-]+$ ]]; then fail "gitleaks-config-path may only contain letters, digits, '.', '_', '-' and '/'."; fi
+            case "$cfg_path" in
+              /*) fail "gitleaks-config-path must be relative to the repository root, not absolute." ;;
+              -*) fail "gitleaks-config-path must not start with '-'." ;;
+              *..*) fail "gitleaks-config-path must not contain '..'." ;;
+              */) fail "gitleaks-config-path must name a file, not a directory." ;;
+            esac
+            cfg_path="${cfg_path#./}"
+          fi
+
+          # --- the default branch as fetched by the checkout (fetch-depth 0 fetches every branch) ---
+          ref="refs/remotes/origin/${DEFAULT_BRANCH}"
+          git rev-parse --verify --quiet "${ref}^{commit}" >/dev/null \
+            || fail "Cannot resolve origin/${DEFAULT_BRANCH} in the checkout; refusing to fall back to the configuration of the code under test."
+
+          # blob_of <path>: print the blob id of <path> on the default branch; nothing if absent.
+          blob_of() {
+            local line mode type sha name
+            line="$(git ls-tree "$ref" -- "$1")"
+            [ -n "$line" ] || return 0
+            [ "$(printf '%s\n' "$line" | wc -l)" -eq 1 ] || fail "$1 is ambiguous on the default branch."
+            IFS=$' \t' read -r mode type sha name <<<"$line"
+            if [ "$type" != "blob" ] || { [ "$mode" != "100644" ] && [ "$mode" != "100755" ]; } || [ "$name" != "$1" ]; then
+              fail "$1 on the default branch is not a regular file."
+            fi
+            printf '%s\n' "$sha"
+          }
+
+          workdir="$(mktemp -d "${RUNNER_TEMP}/gitleaks-base.XXXXXX")"
+
+          # --- config: default-branch version, or an explicit stub that selects the built-in rules ---
+          # (An explicit --config is always passed: without it gitleaks auto-loads .gitleaks.toml
+          # from the checkout, i.e. from the pull request under test.)
+          config_file="$workdir/gitleaks.toml"
+          config_blob=""
+          if [ -n "$cfg_path" ]; then config_blob="$(blob_of "$cfg_path")"; fi
+          if [ -n "$config_blob" ]; then
+            git cat-file blob "$config_blob" > "$config_file"
+            echo "Using ${cfg_path} from origin/${DEFAULT_BRANCH} (blob ${config_blob})."
+            if [ -f "$cfg_path" ] && [ "$(git hash-object -- "$cfg_path")" != "$config_blob" ]; then
+              echo "::notice::${cfg_path} in this checkout differs from origin/${DEFAULT_BRANCH}; the default-branch version is used. Merge a change to it first for it to take effect."
+            fi
+          else
+            printf '%s\n' 'title = "gitleaks built-in default rules (no config on the default branch)"' '' '[extend]' 'useDefault = true' > "$config_file"
+            echo "No gitleaks config '${cfg_path}' on origin/${DEFAULT_BRANCH} -- using gitleaks' built-in default rules only."
+          fi
+
+          # --- .gitleaksignore: gitleaks always reads <source>/.gitleaksignore; replace the checkout's
+          # copy with the default branch's (or none), so a pull request cannot add fingerprints to it ---
+          ignore_blob="$(blob_of ".gitleaksignore")"
+          rm -f -- .gitleaksignore
+          if [ -n "$ignore_blob" ]; then
+            git cat-file blob "$ignore_blob" > .gitleaksignore
+            echo "Using .gitleaksignore from origin/${DEFAULT_BRANCH}."
+          fi
+
+          gitleaks detect --redact --no-banner --config "$config_file"
+
+  semgrep:
+    name: semgrep
+    if: ${{ inputs.run-semgrep }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Select the semgrep install and rule sources
+        id: tools
+        env:
+          TOOLS_REF: ${{ inputs.tools-ref }}
+        run: |
+          set -euo pipefail
+          lock=false
+          rules=false
+          if [ -z "$TOOLS_REF" ]; then
+            echo "tools-ref is not set: no committed semgrep snapshot or hash-locked requirements are used."
+          else
+            if ! [[ "$TOOLS_REF" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::tools-ref must be a full 40-hex commit SHA."
+              exit 1
+            fi
+            dest="${RUNNER_TEMP}/semgrep-tools"
+            mkdir -p "$dest/semgrep-rules"
+            base="https://raw.githubusercontent.com/Project-Arrakis/.github/${TOOLS_REF}/security-scan"
+            # fetch <relative path>: prints the HTTP status; the file lands in $dest/<relative path>.
+            fetch() {
+              curl -sS -L --proto '=https' --tlsv1.2 --max-time 120 --retry 3 -o "$dest/$1" -w '%{http_code}' "$base/$1"
+            }
+            status="$(fetch requirements-semgrep.txt)"
+            case "$status" in
+              200) lock=true ;;
+              404) echo "No requirements-semgrep.txt at ${TOOLS_REF}: using the pinned semgrep==${SEMGREP_VERSION} install." ;;
+              *) echo "::error::Unexpected HTTP ${status} fetching requirements-semgrep.txt."; exit 1 ;;
+            esac
+            default_status="$(fetch semgrep-rules/p-default.yml)"
+            secrets_status="$(fetch semgrep-rules/p-secrets.yml)"
+            if [ "$default_status" = "200" ] && [ "$secrets_status" = "200" ]; then
+              rules=true
+              fetch semgrep-rules/SNAPSHOT.txt >/dev/null || true
+              echo "Using the committed semgrep rule snapshot from ${TOOLS_REF}:"
+              cat "$dest/semgrep-rules/SNAPSHOT.txt" 2>/dev/null || true
+            elif [ "$default_status" = "404" ] && [ "$secrets_status" = "404" ]; then
+              echo "No semgrep rule snapshot at ${TOOLS_REF}: using the live registry sets p/default and p/secrets."
+            else
+              echo "::error::Incomplete semgrep rule snapshot at ${TOOLS_REF} (p-default.yml: HTTP ${default_status}, p-secrets.yml: HTTP ${secrets_status})."
+              exit 1
+            fi
+          fi
+          echo "lock=${lock}" >> "$GITHUB_OUTPUT"
+          echo "rules=${rules}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install semgrep
+        env:
+          LOCKED: ${{ steps.tools.outputs.lock }}
+        run: |
+          set -euo pipefail
+          if [ "$LOCKED" = "true" ]; then
+            python -m pip install --require-hashes -r "${RUNNER_TEMP}/semgrep-tools/requirements-semgrep.txt"
+          else
+            python -m pip install "semgrep==${SEMGREP_VERSION}"
+          fi
+          semgrep --version
+      - name: Run semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+          SNAPSHOT: ${{ steps.tools.outputs.rules }}
+        run: |
+          set -euo pipefail
+          if [ "$SNAPSHOT" = "true" ]; then
+            RULES=(--config "${RUNNER_TEMP}/semgrep-tools/semgrep-rules/p-default.yml" --config "${RUNNER_TEMP}/semgrep-tools/semgrep-rules/p-secrets.yml")
+          else
+            RULES=(--config p/default --config p/secrets)
+          fi
+          semgrep scan "${RULES[@]}" --metrics off --error --severity ERROR --severity WARNING
+
+  trivy:
+    name: trivy
+    if: ${{ inputs.run-trivy }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install trivy
+        run: |
+          curl -sL https://github.com/aquasecurity/trivy/releases/download/v0.73.0/trivy_0.73.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
+          echo "2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b  /tmp/trivy.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/trivy.tar.gz -C /tmp trivy
+          sudo install -m 0755 /tmp/trivy /usr/local/bin/trivy
+          trivy --version
+      - name: Run trivy
+        run: trivy fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --exit-code 1 .

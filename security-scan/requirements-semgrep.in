@@ -1,0 +1,2 @@
+# Input for propose-semgrep-hash-lock.yml (pip-compile --generate-hashes).
+semgrep==1.170.0
