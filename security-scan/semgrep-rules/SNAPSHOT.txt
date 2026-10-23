@@ -1,0 +1,7 @@
+Semgrep registry rule snapshot
+date: 2026-10-23
+sets: p/default p/secrets
+semgrep: 1.170.0
+sha256:
+  cb522de7ea13bd21735930a9c8d7fddab0914850c2ad56941ca0aa73e4f61098  p-default.yml
+  d1afb323ed493cf9d3ee5044447b989debf033b2b7cc8208662a81b8c162c66a  p-secrets.yml
